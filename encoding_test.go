@@ -51,8 +51,7 @@ func ExampleEncode() {
 	src := []byte("proc")
 	dst := make([]byte, 150)
 	length := Encode(dst, src)
-	//fmt.Println(dst)
-	fmt.Println(string(dst[:length]))
+	fmt.Printf("%s", dst[:length])
 	// Output:
 	// ,CHr@
 }
