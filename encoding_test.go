@@ -1,8 +1,10 @@
 package tbcload
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -47,6 +49,40 @@ func TestEncodeDecode(t *testing.T) {
 	testDecode(t, testData)
 }
 
+func ExampleChainReader() {
+	r1 := strings.NewReader("1234\n5678\n90\n12\n345")
+	r2 := newLineReader(r1, 4)
+	//r3 := &eatLastNewLineReader{wrapped: r2}
+	r4 := bufio.NewReader(r2)
+	s1, _, _ := r4.ReadLine()
+	fmt.Printf("%s\n", s1)
+	s1, _, _ = r4.ReadLine()
+	fmt.Printf("%s\n", s1)
+	s1, _, _ = r4.ReadLine()
+	fmt.Printf("%s\n", s1)
+	// Output:
+	// 1234567890
+	// 12
+	// 345
+}
+
+func ExampleChainReader2() {
+	r1 := strings.NewReader("1234\n5678\n90\n12\n345")
+	r2 := newLineReader(r1, 4)
+	r3 := &eatLastNewLineReader{wrapped: r2}
+	//r4 := bufio.NewReader(r2)
+	var buf [128]byte
+	s1, _ := r3.Read(buf[:])
+	fmt.Printf("%s\n", buf[:s1])
+	s1, _ = r3.Read(buf[:])
+	fmt.Printf("%s\n", buf[:s1])
+	s1, _ = r3.Read(buf[:])
+	fmt.Printf("%s\n", buf[:s1])
+	// Output:
+	// 1234567890
+	// 12
+	// 345
+}
 func ExampleEncode() {
 	src := []byte("proc")
 	dst := make([]byte, 150)

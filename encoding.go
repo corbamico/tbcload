@@ -1,6 +1,8 @@
 package tbcload
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/ascii85"
 	"io"
 )
@@ -36,6 +38,7 @@ func Encode(dst, src []byte) int {
 	for index := 0; index < encodeLen; index++ {
 		dst[index] = encodeMap[dst[index]-'!']
 	}
+
 	return encodeLen - (len(srcCopy) - len(src))
 }
 
@@ -74,30 +77,76 @@ func Decode(dst, src []byte) (ndst int) {
 	return
 }
 
-type numCharsLineReader struct {
-	wrapped  io.Reader
-	numChars int //number of each line
+type eatLastNewLineReader struct {
+	wrapped io.Reader
 }
 
-func (r *numCharsLineReader) Read(p []byte) (int, error) {
-	n, err := r.wrapped.Read(p)
-	if n > 0 {
-		offset := 0
-		for i, b := range p[:n] {
-			//if reach last char +1(eg.'\n') ,then skip it
-			if i%(r.numChars+1) == r.numChars {
-				continue
-			}
-
-			if i != offset {
-				p[offset] = b
-			}
-			offset++
-
-		}
-		return offset, err
+func (r *eatLastNewLineReader) Read(p []byte) (nRead int, err error) {
+	nRead, err = r.wrapped.Read(p)
+	if nRead > 0 && p[nRead-1] == '\n' {
+		nRead--
 	}
-	return n, err
+	return
+}
+
+//numCharsLineReader Read
+//implement continue read if size of line eq numChars, until
+//size of line less than numChars
+type numCharsLineReader struct {
+	wrapped   bufio.Reader
+	numChars  int //number of each line
+	readError error
+	lastStr   string
+}
+
+func newLineReader(r io.Reader, numChars int) io.Reader {
+	return &numCharsLineReader{wrapped: *bufio.NewReader(r), numChars: numChars}
+}
+func (r *numCharsLineReader) Read(p []byte) (nRead int, err error) {
+	//len(p)至少需要FixedSize of line大小
+	if len(p) < r.numChars {
+		return 0, io.ErrShortBuffer
+	}
+	for {
+		//从buffered string中直接返回
+		if len(r.lastStr) > 0 {
+			nRead = copy(p, r.lastStr)
+			if nRead >= len(r.lastStr) {
+				//返回了整个buffered string，清空buffer和readError
+				r.lastStr = r.lastStr[nRead:]
+				r.readError = nil
+				return nRead, r.readError
+			}
+			//buffered string后移，以便下次调用Read时再读
+			r.lastStr = r.lastStr[:0]
+			return nRead, nil
+		}
+
+		//buffer string为空，需要从wrapped里面Read到buffer中
+		var b bytes.Buffer
+		var bRead = true
+
+		for bRead {
+			line, err := r.wrapped.ReadString('\n') //includes '\n'
+			bRead = len(line) >= r.numChars && err == nil
+
+			//如果line之间的'\n'，则删除；保留String末尾的'\n'
+			if len(line) >= r.numChars {
+				b.WriteString(line[:r.numChars])
+			} else {
+				b.WriteString(line)
+			}
+		}
+
+		//已经连续读完，如果读到空，直接返回
+		if b.Len() == 0 {
+			return 0, err
+		}
+
+		r.readError = err
+		r.lastStr = b.String()
+		//保存到buffer中，返回for循环
+	}
 }
 
 func align4Bytes(src []byte, padding byte) []byte {
