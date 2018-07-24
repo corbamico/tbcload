@@ -77,6 +77,55 @@ func Decode(dst, src []byte) (ndst int) {
 	return
 }
 
+//Decoder wrap decode for stream reader
+type Decoder struct {
+	wrapped io.Reader
+	srcbuf  [20480]byte
+	dstbuf  [20480]byte
+	src     []byte
+	dst     []byte
+	//we did not record error, is that ok?
+}
+
+const maxCharsOneLine = 72
+
+//NewDecoder return Decoder which wrap Decode for stream reader
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{wrapped: &eatLastNewLineReader{wrapped: newLineReader(r, maxCharsOneLine)}}
+}
+
+func (d *Decoder) Read(p []byte) (nRead int, err error) {
+	var nsrc int
+	for {
+		//we ask more buffer
+		if len(d.dst) > len(p) {
+			return 0, io.ErrShortBuffer
+		}
+		//we have data, read from it
+		if len(d.dst) > 0 {
+			nRead = copy(p, d.dst)
+			return
+		}
+		//we dont have data, so read it frist
+		nsrc, err = d.wrapped.Read(d.srcbuf[:])
+		//we read zero byte
+		if nsrc == 0 {
+			return nsrc, err
+		}
+
+		d.src = d.srcbuf[:nsrc]
+		nRead = Decode(d.dstbuf[:], d.src)
+		d.dst = d.dstbuf[:nRead]
+		//we read&decode into d.dst ,so back to for-loop return
+	}
+}
+
+//ReadRaw only read  from wrapped io without Decoding
+func (d *Decoder) ReadRaw(p []byte) (nRead int, err error) {
+	nRead, err = d.wrapped.Read(p)
+	return
+}
+
 type eatLastNewLineReader struct {
 	wrapped io.Reader
 }
