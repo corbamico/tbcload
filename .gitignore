@@ -12,3 +12,5 @@
 *.out
 
 reference
+.vscode
+debug

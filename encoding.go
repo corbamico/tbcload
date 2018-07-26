@@ -104,6 +104,7 @@ func (d *Decoder) Read(p []byte) (nRead int, err error) {
 		//we have data, read from it
 		if len(d.dst) > 0 {
 			nRead = copy(p, d.dst)
+			d.dst = d.dst[nRead:]
 			return
 		}
 		//we dont have data, so read it frist
@@ -135,6 +136,9 @@ func (r *eatLastNewLineReader) Read(p []byte) (nRead int, err error) {
 	if nRead > 0 && p[nRead-1] == '\n' {
 		nRead--
 	}
+	if nRead > 0 && p[nRead-1] == '\r' {
+		nRead--
+	}
 	return
 }
 
@@ -152,6 +156,8 @@ func newLineReader(r io.Reader, numChars int) io.Reader {
 	return &numCharsLineReader{wrapped: *bufio.NewReader(r), numChars: numChars}
 }
 func (r *numCharsLineReader) Read(p []byte) (nRead int, err error) {
+	var line string
+
 	//len(p)至少需要FixedSize of line大小
 	if len(p) < r.numChars {
 		return 0, io.ErrShortBuffer
@@ -162,12 +168,12 @@ func (r *numCharsLineReader) Read(p []byte) (nRead int, err error) {
 			nRead = copy(p, r.lastStr)
 			if nRead >= len(r.lastStr) {
 				//返回了整个buffered string，清空buffer和readError
-				r.lastStr = r.lastStr[nRead:]
+				r.lastStr = ""
 				r.readError = nil
 				return nRead, r.readError
 			}
 			//buffered string后移，以便下次调用Read时再读
-			r.lastStr = r.lastStr[:0]
+			r.lastStr = r.lastStr[nRead:]
 			return nRead, nil
 		}
 
@@ -176,13 +182,14 @@ func (r *numCharsLineReader) Read(p []byte) (nRead int, err error) {
 		var bRead = true
 
 		for bRead {
-			line, err := r.wrapped.ReadString('\n') //includes '\n'
-			bRead = len(line) >= r.numChars && err == nil
+			line, err = r.wrapped.ReadString('\n') //includes '\n'
+			nLen := len(line)
+			bRead = nLen >= r.numChars && err == nil
 
-			//如果line之间的'\n'，则删除；保留String末尾的'\n'
-			if len(line) >= r.numChars {
+			//如果line之间的'\n'，则删除；保留String末尾的'\r' '\n'
+			if nLen >= r.numChars {
 				b.WriteString(line[:r.numChars])
-			} else {
+			} else if nLen > 0 {
 				b.WriteString(line)
 			}
 		}

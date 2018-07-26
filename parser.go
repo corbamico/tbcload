@@ -29,6 +29,7 @@ func (p *Parser) Parse() (err error) {
 		return
 	}
 	err = p.parseByteCode()
+	p.w.Flush()
 	return
 }
 
@@ -38,7 +39,8 @@ func (p *Parser) skipUntil(prefix string) (err error) {
 	for {
 		if nRead, err = p.r.ReadRaw(buf[:]); err != nil {
 			return
-		} else if strings.HasPrefix(string(buf[:nRead]), prefix) {
+		}
+		if strings.HasPrefix(string(buf[:nRead]), prefix) {
 			return nil
 		}
 	}
@@ -71,6 +73,7 @@ func (p *Parser) parseIntList() (res []int64, err error) {
 }
 func (p *Parser) parseByteCode() (err error) {
 	//1. procedure struct info
+
 	if _, err = p.parseRawStringLine(); err != nil {
 		return
 	}
