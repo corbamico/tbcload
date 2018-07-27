@@ -78,7 +78,7 @@ func (p *Parser) parseByteCode() (err error) {
 		return
 	}
 	//2. ByteCode
-	if err = p.parseHex(); err != nil {
+	if err = p.parseCode(); err != nil {
 		return
 	}
 	//3. CodeDelta
@@ -169,6 +169,8 @@ func (p *Parser) parseXStringObject() (err error) {
 }
 func (p *Parser) parseProcedureObject() (err error) {
 	var lengths []int64
+
+	p.w.WriteString("\n---procedure begin---\n")
 	//1. ByteCode
 	if err = p.parseByteCode(); err != nil {
 		return
@@ -183,6 +185,7 @@ func (p *Parser) parseProcedureObject() (err error) {
 			return
 		}
 	}
+	p.w.WriteString("\n---procedure end  ---")
 	return
 }
 func (p *Parser) parseCompiledLocal() (err error) {
@@ -199,11 +202,13 @@ func (p *Parser) parseCompiledLocal() (err error) {
 	if ints, err = p.parseIntList(); err != nil || len(ints) != 3 {
 		return
 	}
-	ss := fmt.Sprintf("[local-%d]%s,hasDefault:%d", ints[0], sName, ints[1])
+	ss := fmt.Sprintf("[local-%02d]name=%s,hasDefault=%d ", ints[0], sName, ints[1])
 	p.w.WriteString(ss)
 
 	//3. if (hasDef) Object
-	err = p.parseObject()
+	if ints[1] == 1 {
+		err = p.parseObject()
+	}
 	return
 }
 func (p *Parser) parseExcRangeArray() (err error) {

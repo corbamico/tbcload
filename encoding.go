@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/ascii85"
+	"errors"
 	"io"
 )
 
@@ -60,7 +61,7 @@ func Decode(dst, src []byte) (ndst int) {
 		srcCopy[index] = decodeMap[src[index]] + '!'
 	}
 
-	//step 1 align to 4 bytes,padding as 0
+	//step 1 align to 5 bytes,padding as 0
 	srcCopy = align5Bytes(srcCopy, '!')
 
 	//step 2 Big-Endian to Little-Endian
@@ -73,7 +74,11 @@ func Decode(dst, src []byte) (ndst int) {
 	exchangeEvery4(dst[:ndst])
 
 	//step 5 drop padding
-	ndst = ndst - (len(srcCopy) - len(src))
+	if padding := len(srcCopy) - len(src); padding == 4 {
+		ndst = ndst - 2
+	} else {
+		ndst = ndst - padding
+	}
 	return
 }
 
@@ -93,6 +98,9 @@ const maxCharsOneLine = 72
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{wrapped: &eatLastNewLineReader{wrapped: newLineReader(r, maxCharsOneLine)}}
 }
+
+// ErrDecodeErr mean error while decoding from bytes
+var ErrDecodeErr = errors.New("error decoding from bytes")
 
 func (d *Decoder) Read(p []byte) (nRead int, err error) {
 	var nsrc int
@@ -117,6 +125,9 @@ func (d *Decoder) Read(p []byte) (nRead int, err error) {
 		d.src = d.srcbuf[:nsrc]
 		nRead = Decode(d.dstbuf[:], d.src)
 		d.dst = d.dstbuf[:nRead]
+		if nRead == 0 {
+			return 0, ErrDecodeErr
+		}
 		//we read&decode into d.dst ,so back to for-loop return
 	}
 }
@@ -351,9 +362,9 @@ var encodeMap = [...]byte{
 	'u',  /* 84: u */
 }
 
-const a85Whitespace = 0
-const a85IllegalChar = 0
-const a85Z = 0
+const a85Whitespace = byte(0xff)  //-1
+const a85IllegalChar = byte(0xfe) //-2
+const a85Z = byte(0xfd)           //-3
 
 var decodeMap = [...]byte{
 	a85IllegalChar, /* ^@ */

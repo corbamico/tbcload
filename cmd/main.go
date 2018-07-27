@@ -7,7 +7,7 @@ import (
 	"github.com/corbamico/tbcload"
 )
 
-const testFile = "D:\\Project\\go\\src\\github.com\\activestate\\teapot\\lib\\tbcload\\tests\\tbc10\\proc.tbc"
+const testFile = "c:/project/go/src/github.com/ActiveState/teapot/lib/tbcload/tests/tbc10/proc.tbc"
 
 func main() {
 	fs, err := os.Open(testFile)
@@ -16,6 +16,7 @@ func main() {
 		return
 	}
 	p := tbcload.NewParser(fs, os.Stderr)
-	err = p.Parse()
-	log.Fatalln(err)
+	if err = p.Parse(); err != nil {
+		log.Fatalln(err)
+	}
 }
