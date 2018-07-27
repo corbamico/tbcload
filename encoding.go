@@ -70,7 +70,7 @@ func Decode(dst, src []byte) (ndst int) {
 	//step 3 ascii85 decode
 	ndst, _, _ = ascii85.Decode(dst, srcCopy, true)
 
-	//step 4 reverse string every 5 bytes
+	//step 4 reverse string every 4 bytes
 	exchangeEvery4(dst[:ndst])
 
 	//step 5 drop padding
@@ -195,7 +195,14 @@ func (r *numCharsLineReader) Read(p []byte) (nRead int, err error) {
 		for bRead {
 			line, err = r.wrapped.ReadString('\n') //includes '\n'
 			nLen := len(line)
-			bRead = nLen >= r.numChars && err == nil
+			//if char[72]+"\r\n" || char[72] + "\n" ,则继续读下一行
+			if nLen == (r.numChars+2) && err == nil {
+				//bRead = true
+			} else if nLen == (r.numChars+1) && line[nLen-1] == '\n' && line[nLen-2] != '\r' && err == nil {
+				//bRead = true
+			} else {
+				bRead = false
+			}
 
 			//如果line之间的'\n'，则删除；保留String末尾的'\r' '\n'
 			if nLen >= r.numChars {

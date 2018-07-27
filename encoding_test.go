@@ -84,10 +84,19 @@ func ExampleChainReader2() {
 	// 345
 }
 func ExampleEncode() {
-	src := []byte("This application hasn't been compiled with Tcltest")
-	dst := make([]byte, 150)
+	src := []byte("testing aliases for non-existent targets")
+	dst := make([]byte, 280)
 	length := Encode(dst, src)
 	fmt.Printf("%s", dst[:length])
+	// Output:
+	// ,CHr@
+}
+
+func ExampleDecode() {
+	src := []byte("P4BX@!Si|D4<XeDT<uK/!:-W@gl/x3B=2*F(dZRA#3%lBBSq=+dO0;@DB>9/'9DTA3pi7/v-7hC7pi7/)3Q<@?OWKA@/;EFFOWKAB#Q)F;jSHB+@i7/v^,8A0wf8/<%u)F%Fi7/:vD&GtstOBc=oRAIB1'D*oGDFFS;EF7&q=+.3#%GFSq=+&X`aEG,E<Flw6SAQTg|DEF`cEuihoA!mA.")
+	dst := make([]byte, 280)
+	length := Decode(dst, src)
+	fmt.Printf("%s", string(dst[:length]))
 	// Output:
 	// ,CHr@
 }

@@ -74,7 +74,8 @@ func TestParser(t *testing.T) {
 }
 
 func TestSingleFile(t *testing.T) {
-	sFile := "c:/project/go/src/github.com/corbamico/tbcload/cmd/test/interp.tbc"
+	//sFile := "c:/project/go/src/github.com/corbamico/tbcload/cmd/test/interp.tbc"
+	sFile := "D:\\Project\\go\\src\\github.com\\corbamico\\tbcload\\test\\interp.tbc"
 	fs, err := os.Open(sFile)
 	if err != nil {
 		t.Error(err)
