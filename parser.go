@@ -109,7 +109,9 @@ func (p *Parser) parseObjectArray() (err error) {
 	for index := 0; index < int(num); index++ {
 		//output
 		p.w.WriteString(fmt.Sprintf("[lit-%04d]", index))
-		p.parseObject()
+		if err = p.parseObject(); err != nil {
+			return err
+		}
 		p.w.WriteByte('\n')
 	}
 	return
@@ -156,8 +158,13 @@ func (p *Parser) parseSimpleObject() (err error) {
 func (p *Parser) parseXStringObject() (err error) {
 	var buf [20480]byte
 	var nRead int
-	if _, err = p.parseIntLine(); err != nil {
+	var nLen int64
+	if nLen, err = p.parseIntLine(); err != nil {
 		return err
+	}
+	if nLen == 0 {
+		p.r.ReadRaw(buf[:])
+		return nil
 	}
 	if nRead, err = p.r.Read(buf[:]); err != nil {
 		return err
@@ -209,6 +216,7 @@ func (p *Parser) parseCompiledLocal() (err error) {
 	if ints[1] == 1 {
 		err = p.parseObject()
 	}
+	p.w.WriteByte('\n')
 	return
 }
 func (p *Parser) parseExcRangeArray() (err error) {

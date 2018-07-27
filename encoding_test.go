@@ -84,7 +84,7 @@ func ExampleChainReader2() {
 	// 345
 }
 func ExampleEncode() {
-	src := []byte("proc")
+	src := []byte("This application hasn't been compiled with Tcltest")
 	dst := make([]byte, 150)
 	length := Encode(dst, src)
 	fmt.Printf("%s", dst[:length])
