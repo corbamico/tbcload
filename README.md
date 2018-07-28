@@ -10,7 +10,20 @@ test  .tbc file can be found [here](https://github.com/ActiveState/teapot/tree/m
 go get github.com/corbamico/tbcload/cmd/distclbytecode
 ```
 
-## Example
+## Usage
+
+``` shell
+Usage: distclbytecode [-h|--help] [file|url]
+disassemble tcl bytecode file (usally .tbc file).
+
+Example:
+    distclbytecode  test.tbc  #disassemble a file named test.tbc
+    distclbytecode  http://127.0.0.1/test.tcl #disassemble from a url
+
+    example url, can be found as https://github.com/ActiveState/teapot/raw/master/lib/tbcload/tests/tbc10/proc.tbc
+```
+
+## Code Example
 
 ``` go
 func ExampleEncode() {
