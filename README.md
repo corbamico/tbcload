@@ -33,3 +33,9 @@ func ExampleDecode() {
 ## Reference
 
 - ActiveState Teapot [cmpWrite.c](https://github.com/ActiveState/teapot/blob/master/lib/tclcompiler/cmpWrite.c)
+
+## License
+
+- MIT
+
+- ActiveState/teapot/cmpWrite.c BSD-3 license Copyright (c) 2017,ActiveState Software All rights reserved.
