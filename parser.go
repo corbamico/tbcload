@@ -12,8 +12,9 @@ import (
 
 //Parser read tbc file and write 'dissemble' to w
 type Parser struct {
-	r Decoder
-	w bufio.Writer
+	r      Decoder
+	w      bufio.Writer
+	detail bool //true: disassemble bytecode
 }
 
 //NewParser create Parser
@@ -242,10 +243,18 @@ func (p *Parser) parseAuxDataArray() (err error) {
 		//numLists firstValueTemp loopCtTemp
 		//numVars
 		//*varIndexesPtr
-		_, err = p.parseRawStringLine()
-		_, err = p.parseRawStringLine()
-		_, err = p.parseRawStringLine()
-		_, err = p.parseRawStringLine()
+		if _, err = p.parseRawStringLine(); err != nil {
+			return
+		}
+		if _, err = p.parseRawStringLine(); err != nil {
+			return
+		}
+		if _, err = p.parseRawStringLine(); err != nil {
+			return
+		}
+		if _, err = p.parseRawStringLine(); err != nil {
+			return
+		}
 	}
 	return err
 }
@@ -263,6 +272,30 @@ func (p *Parser) parseHex() (err error) {
 	s := hex.EncodeToString(buf[:nRead])
 	_, err = p.w.WriteString(s)
 	err = p.w.WriteByte('\n')
+	return
+}
+
+func parseOpCode(opName string, op1 byte, op2 byte) string {
+	return ""
+}
+
+func (p *Parser) parseDisassembleCode(src []byte) (err error) {
+	if len(src) == 0 {
+		return
+	}
+	for len(src) > 0 {
+		opName := tclOpTable[src[0]].name
+		bytes := tclOpTable[src[0]].numBytes
+		//numOperands := tclOpTable[src[0]].numOperands
+		op1 := tclOpTable[src[0]].opTypes[0]
+		op2 := tclOpTable[src[0]].opTypes[1]
+
+		p.w.WriteString(parseOpCode(opName, op1, op2))
+		p.w.WriteByte('\n')
+
+		src = src[bytes:]
+
+	}
 	return
 }
 
