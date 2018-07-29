@@ -2,10 +2,13 @@ package tbcload
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -79,15 +82,15 @@ func (p *Parser) parseByteCode() (err error) {
 		return
 	}
 	//2. ByteCode
-	if err = p.parseCode(); err != nil {
+	if err = p.parseHex(true); err != nil {
 		return
 	}
 	//3. CodeDelta
-	if err = p.parseHex(); err != nil {
+	if err = p.parseHex(false); err != nil {
 		return
 	}
 	//4. CodeLength
-	if err = p.parseHex(); err != nil {
+	if err = p.parseHex(false); err != nil {
 		return
 	}
 	//5. ObjectArray
@@ -260,7 +263,7 @@ func (p *Parser) parseAuxDataArray() (err error) {
 }
 
 //only conver asci85 to hex printing.
-func (p *Parser) parseHex() (err error) {
+func (p *Parser) parseHex(isCode bool) (err error) {
 	var buf [20480]byte
 	var nRead int
 	if _, err = p.parseIntLine(); err != nil {
@@ -272,38 +275,102 @@ func (p *Parser) parseHex() (err error) {
 	s := hex.EncodeToString(buf[:nRead])
 	_, err = p.w.WriteString(s)
 	err = p.w.WriteByte('\n')
+	if isCode {
+		err = p.parseDisassembleCode(buf[:nRead])
+	}
 	return
 }
 
-func parseOpCode(opName string, op1 byte, op2 byte) string {
-	return ""
+func parseOperand(src []byte, operandType byte) (res string, nextSrc []byte, err error) {
+	var nLen = 0
+	switch operandType {
+	case OPERAND_NONE:
+		nLen = 0
+	case OPERAND_INT1, OPERAND_LVT1, OPERAND_OFFSET1:
+		/* One byte signed integer. */
+		res = strconv.Itoa(int(int8(src[0])))
+		nLen = 1
+	case OPERAND_UINT1, OPERAND_LIT1, OPERAND_SCLS1:
+		/* One byte unsigned integer. */
+		res = strconv.Itoa(int(uint8(src[0])))
+		nLen = 1
+
+	case OPERAND_INT4, OPERAND_IDX4, OPERAND_OFFSET4:
+		/* Four byte signed integer. */
+		var i int32
+		nLen = 4
+		buf := bytes.NewBuffer(src[:nLen])
+		err = binary.Read(buf, binary.BigEndian, &i)
+		res = strconv.Itoa(int(i))
+
+	case OPERAND_UINT4, OPERAND_LVT4, OPERAND_AUX4, OPERAND_LIT4:
+		/* Four byte unsigned integer. */
+		var i uint32
+		nLen = 4
+		buf := bytes.NewBuffer(src[:nLen])
+		err = binary.Read(buf, binary.BigEndian, &i)
+		res = strconv.Itoa(int(i))
+		//BUG? int(uint32(i))?
+	}
+
+	return res, src[nLen:], err
+}
+
+func paresOneOp(src []byte) (res string, numBytes int, err error) {
+	var b strings.Builder
+	var str string
+	opInt := int(src[0])
+	if opInt >= len(tclOpTable) {
+		return "", 1, os.ErrNotExist
+	}
+	opName := tclOpTable[opInt].name
+	bytes := tclOpTable[opInt].numBytes
+	numOperands := tclOpTable[opInt].numOperands
+	op1 := tclOpTable[opInt].opTypes[0]
+	op2 := tclOpTable[opInt].opTypes[1]
+	b.WriteString(opName)
+	src = src[1:]
+
+	if numOperands > 0 {
+		if str, src, err = parseOperand(src, op1); err != nil {
+			return b.String(), bytes, err
+		}
+		b.WriteByte(' ')
+		b.WriteString(str)
+	}
+
+	if numOperands > 1 {
+		if str, src, err = parseOperand(src, op2); err != nil {
+			return b.String(), bytes, err
+		}
+		b.WriteByte(' ')
+		b.WriteString(str)
+	}
+	return b.String(), bytes, err
+
 }
 
 func (p *Parser) parseDisassembleCode(src []byte) (err error) {
+	var str string
+	var bytes int
 	if len(src) == 0 {
 		return
 	}
 	for len(src) > 0 {
-		opName := tclOpTable[src[0]].name
-		bytes := tclOpTable[src[0]].numBytes
-		//numOperands := tclOpTable[src[0]].numOperands
-		op1 := tclOpTable[src[0]].opTypes[0]
-		op2 := tclOpTable[src[0]].opTypes[1]
-
-		p.w.WriteString(parseOpCode(opName, op1, op2))
+		if str, bytes, err = paresOneOp(src); err != nil {
+			return err
+		}
+		p.w.WriteString(str)
 		p.w.WriteByte('\n')
-
 		src = src[bytes:]
-
 	}
 	return
 }
 
 //ascii85 decode ,and then disassemble code
-func (p *Parser) parseCode() (err error) {
-	//TODO disassemble bytecode
-	return p.parseHex()
-}
+// func (p *Parser) parseCode() (err error) {
+// 	return p.parseHex(true)
+// }
 
 func (p *Parser) parseRawStringLine() (str string, err error) {
 	var buf [maxCharsOneLine]byte
