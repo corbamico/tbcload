@@ -93,7 +93,7 @@ func ExampleEncode() {
 }
 
 func ExampleDecode() {
-	src := []byte("w0E<!&6E<!-`8X!2`8X!z")
+	src := []byte("4;,>!?.EH&ih-(!e2xi6zyiE<!22>:v35>:v22Ppv2j:U!*|yTv0#>6#5cSs!)'!!")
 	dst := make([]byte, 280)
 	length := Decode(dst, src)
 	fmt.Printf("%s", string(dst[:length]))

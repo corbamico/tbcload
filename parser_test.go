@@ -56,6 +56,7 @@ func testURLTBC(t *testing.T, uriPath string, fileName string) {
 		return
 	}
 	p := NewParser(r.Body, ioutil.Discard)
+	p.Detail = true
 	err = p.Parse()
 	if err != nil {
 		t.Errorf("failed parse uri:%s;err=%s", fileName, err)
@@ -75,13 +76,14 @@ func TestParser(t *testing.T) {
 
 func TestSingleFile(t *testing.T) {
 	//sFile := "D:\\Program Files (x86)\\TclPro1.4\\win32-ix86\\bin\\simple.tbc"
-	sFile := "c:\\Project\\go\\src\\github.com\\corbamico\\tbcload\\test\\interp.tbc"
+	sFile := "d:\\Project\\go\\src\\github.com\\corbamico\\tbcload\\test\\aux1.tbc"
 	fs, err := os.Open(sFile)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	p := NewParser(fs, os.Stdout)
+	p.Detail = true
 	if err = p.Parse(); err != nil {
 		t.Error(err)
 	}

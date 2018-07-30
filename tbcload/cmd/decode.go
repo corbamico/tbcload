@@ -32,10 +32,13 @@ For example:
 	tbcload decode ",CHr@"`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		var src []byte
 
 		if len(args) == 1 {
 			dst := make([]byte, len(args[0]))
-			if ndst := tbcload.Decode(dst, []byte(args[0])); ndst > 0 {
+
+			src = []byte(args[0])
+			if ndst := tbcload.Decode(dst, src); ndst > 0 {
 				fmt.Printf("source:%s\n", args[0])
 				fmt.Printf("decode:%s\n", dst[:ndst])
 				fmt.Printf("dump  :\n%s", hex.Dump(dst[:ndst]))
@@ -60,5 +63,5 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// decodeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }

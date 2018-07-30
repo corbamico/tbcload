@@ -173,7 +173,12 @@ var tclOpTable = []InstructionDesc{
 	{"foreach_start4", 5, 0, 1, [2]byte{OPERAND_AUX4}},
 	/* Initialize execution of a foreach loop. Operand is aux data index
 	 * of the ForeachInfo structure for the foreach command. */
+
+	//for 8.2 this is wrong,
+	//we try,try,try.......
+	//{"foreach_step4", 2, +1, 1, [2]byte{OPERAND_INT1}},
 	{"foreach_step4", 5, +1, 1, [2]byte{OPERAND_AUX4}},
+
 	/* "Step" or begin next iteration of foreach loop. Push 0 if to
 	 * terminate loop, else push 1. */
 

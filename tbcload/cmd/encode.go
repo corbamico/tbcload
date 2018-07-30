@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"encoding/ascii85"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/corbamico/tbcload"
@@ -31,9 +32,22 @@ For example:
 proc->,CHr@`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		var src []byte
+		var err error
+
 		if len(args) == 1 {
 			dst := make([]byte, ascii85.MaxEncodedLen(len(args[0])))
-			if ndst := tbcload.Encode(dst, []byte(args[0])); ndst > 0 {
+
+			if bHex {
+				if src, err = hex.DecodeString(args[0]); err != nil {
+					fmt.Printf("wrong hex string,error:%s\n", err)
+					return
+				}
+			} else {
+				src = []byte(args[0])
+			}
+
+			if ndst := tbcload.Encode(dst, src); ndst > 0 {
 				fmt.Printf("source:%s\n", args[0])
 				fmt.Printf("encode:%s\n", dst[:ndst])
 			} else {
@@ -45,6 +59,8 @@ proc->,CHr@`,
 		}
 	},
 }
+
+var bHex bool
 
 func init() {
 	rootCmd.AddCommand(encodeCmd)
@@ -58,4 +74,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// encodeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	encodeCmd.Flags().BoolVarP(&bHex, "hex", "x", false, "input as hex string")
 }
