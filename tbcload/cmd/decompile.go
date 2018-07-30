@@ -24,16 +24,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// disassembleCmd represents the disassemble command
-var disassembleCmd = &cobra.Command{
-	Use:   "disassemble [file|url]",
-	Short: "disassemble a .tbc file, which can be on disk/url",
-	Long: `disassemble a .tbc file, which can be on disk/url.
+// decompileCmd represents the decompile command
+var decompileCmd = &cobra.Command{
+	Use:   "decompile [file|url]",
+	Short: "decompile a .tbc file, which can be on disk/url",
+	Long: `decompile a .tbc file, which can be on disk/url.
 
 Example:
-     tbcload disassemble  test.tbc  #disassemble a file named test.tbc
-     tbcload disassemble  https://github.com/ActiveState/teapot/raw/master/lib/tbcload/tests/tbc10/proc.tbc
-                 	 #disassemble from a url`,
+    tbcload decompile  test.tbc  #decompile a file named test.tbc
+    tbcload decompile  https://github.com/ActiveState/teapot/raw/master/lib/tbcload/tests/tbc10/proc.tbc
+			#decompile from a url`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			uri := args[0]
@@ -49,8 +50,10 @@ Example:
 	},
 }
 
+var detail bool
+
 func init() {
-	rootCmd.AddCommand(disassembleCmd)
+	rootCmd.AddCommand(decompileCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -60,22 +63,8 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// disassembleCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	decompileCmd.Flags().BoolVarP(&detail, "detail", "d", false, "decompile bytecode instruction too")
 }
-
-// func usage() {
-// 	message := `
-// Usage: distclbytecode [-h|--help] [file|url]
-// disassemble tcl bytecode file (usally .tbc file).
-
-// Example:
-//     distclbytecode  test.tbc  #disassemble a file named test.tbc
-//     distclbytecode  https://github.com/ActiveState/teapot/raw/master/lib/tbcload/tests/tbc10/proc.tbc
-//                 	#disassemble from a url
-// 	`
-// 	fmt.Println(message)
-// 	os.Exit(1)
-// }
 
 func parseFile(uri string) {
 	r, err := os.Open(uri)
@@ -84,6 +73,7 @@ func parseFile(uri string) {
 		return
 	}
 	p := tbcload.NewParser(r, os.Stdout)
+	p.Detail = detail
 	if err = p.Parse(); err != nil {
 		fmt.Printf("failed parse file (%s), error as (%s)\n", uri, err)
 		return
@@ -96,22 +86,11 @@ func parseURL(uri string) {
 		return
 	}
 	p := tbcload.NewParser(r.Body, os.Stdout)
+	p.Detail = detail
+	
 	if err = p.Parse(); err != nil {
 		fmt.Printf("failed parse uri (%s), error as (%s)\n", uri, err)
 		return
 	}
 	r.Body.Close()
 }
-
-// func main() {
-// 	if len(os.Args) != 2 || os.Args[1] == "-h" || os.Args[1] == "--help" {
-// 		usage()
-// 	}
-// 	uri := os.Args[1]
-
-// 	if strings.HasPrefix(uri, "https://") || strings.HasPrefix(uri, "http://") {
-// 		parseURL(uri)
-// 	} else {
-// 		parseFile(uri)
-// 	}
-// }

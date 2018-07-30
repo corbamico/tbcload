@@ -15,9 +15,12 @@ import (
 
 //Parser read tbc file and write 'dissemble' to w
 type Parser struct {
-	r      Decoder
-	w      bufio.Writer
-	detail bool //true: disassemble bytecode
+	r          Decoder
+	w          bufio.Writer
+	Detail     bool //true: disassemble bytecode
+	codeBytes  []byte
+	codeDelta  []byte
+	codeLength []byte
 }
 
 //NewParser create Parser
@@ -82,17 +85,25 @@ func (p *Parser) parseByteCode() (err error) {
 		return
 	}
 	//2. ByteCode
-	if err = p.parseHex(true); err != nil {
+	if err = p.parseCode(); err != nil {
 		return
 	}
 	//3. CodeDelta
-	if err = p.parseHex(false); err != nil {
+	if err = p.parseCodeDelta(); err != nil {
 		return
 	}
 	//4. CodeLength
-	if err = p.parseHex(false); err != nil {
+	if err = p.parseCodeLength(); err != nil {
 		return
 	}
+
+	//if dump all instruction
+	if p.Detail {
+		if err = p.parseDecompile(); err != nil {
+			return
+		}
+	}
+
 	//5. ObjectArray
 	if err = p.parseObjectArray(); err != nil {
 		return
@@ -262,8 +273,7 @@ func (p *Parser) parseAuxDataArray() (err error) {
 	return err
 }
 
-//only conver asci85 to hex printing.
-func (p *Parser) parseHex(isCode bool) (err error) {
+func (p *Parser) parseCodeDelta() (err error) {
 	var buf [20480]byte
 	var nRead int
 	if _, err = p.parseIntLine(); err != nil {
@@ -275,9 +285,69 @@ func (p *Parser) parseHex(isCode bool) (err error) {
 	s := hex.EncodeToString(buf[:nRead])
 	_, err = p.w.WriteString(s)
 	err = p.w.WriteByte('\n')
-	if isCode {
-		err = p.parseDisassembleCode(buf[:nRead])
+
+	if nRead > 0 {
+		p.codeDelta = make([]byte, nRead)
+		copy(p.codeDelta, buf[:nRead])
 	}
+	return
+}
+func (p *Parser) parseCodeLength() (err error) {
+	var buf [20480]byte
+	var nRead int
+	if _, err = p.parseIntLine(); err != nil {
+		return
+	}
+	if nRead, err = p.r.Read(buf[:]); err != nil {
+		return
+	}
+	s := hex.EncodeToString(buf[:nRead])
+	_, err = p.w.WriteString(s)
+	err = p.w.WriteByte('\n')
+
+	if nRead > 0 {
+		p.codeLength = make([]byte, nRead)
+		copy(p.codeLength, buf[:nRead])
+	}
+	return
+}
+
+func (p *Parser) parseCode() (err error) {
+	var buf [20480]byte
+	var nRead int
+	if _, err = p.parseIntLine(); err != nil {
+		return
+	}
+	if nRead, err = p.r.Read(buf[:]); err != nil {
+		return
+	}
+	s := hex.EncodeToString(buf[:nRead])
+	_, err = p.w.WriteString(s)
+	err = p.w.WriteByte('\n')
+
+	if nRead > 0 {
+		p.codeBytes = make([]byte, nRead)
+		copy(p.codeBytes, buf[:nRead])
+	}
+	return
+}
+
+//only conver asci85 to hex printing.
+func (p *Parser) parseHex() (err error) {
+	var buf [20480]byte
+	var nRead int
+	if _, err = p.parseIntLine(); err != nil {
+		return
+	}
+	if nRead, err = p.r.Read(buf[:]); err != nil {
+		return
+	}
+	s := hex.EncodeToString(buf[:nRead])
+	_, err = p.w.WriteString(s)
+	err = p.w.WriteByte('\n')
+	// if isCode {
+	// 	err = p.parseDisassembleCode(buf[:nRead])
+	// }
 	return
 }
 
@@ -340,7 +410,7 @@ func paresOneOp(src []byte) (res string, numBytes int, err error) {
 	}
 
 	if numOperands > 1 {
-		if str, src, err = parseOperand(src, op2); err != nil {
+		if str, _, err = parseOperand(src, op2); err != nil {
 			return b.String(), bytes, err
 		}
 		b.WriteByte(' ')
@@ -350,9 +420,17 @@ func paresOneOp(src []byte) (res string, numBytes int, err error) {
 
 }
 
-func (p *Parser) parseDisassembleCode(src []byte) (err error) {
+func (p *Parser) parseDecompile() (err error) {
 	var str string
 	var bytes int
+	var totalBytes int
+	src := p.codeBytes
+
+	numCmds := len(p.codeDelta)
+	indexCmds := 0
+	cmdBegin := true
+	var cmdBytes, cmdDelta int
+
 	if len(src) == 0 {
 		return
 	}
@@ -360,17 +438,51 @@ func (p *Parser) parseDisassembleCode(src []byte) (err error) {
 		if str, bytes, err = paresOneOp(src); err != nil {
 			return err
 		}
+		//1. print command title: command %d,pc=xx-xx
+		if numCmds > 0 && indexCmds < (numCmds-1) {
+			if cmdBegin {
+				cmdBytes = bytes
+				cmdBegin = false
+				//BUG,FIXME, we dont consider codeDelta = 0xFF 4bytes case
+				samePCforCmds := true
+
+				for samePCforCmds {
+
+					cmdDelta = int(p.codeDelta[indexCmds+1])
+					p.w.WriteString(fmt.Sprintf("\tCommand %d", indexCmds))
+					if indexCmds < len(p.codeLength) {
+						//BUG,FIXME, we dont consider codeLength = 0xFF 4bytes case
+						p.w.WriteString(fmt.Sprintf(",pc= %d-%d", totalBytes, totalBytes+int(p.codeLength[indexCmds])-1))
+					}
+					p.w.WriteByte('\n')
+					indexCmds++
+
+					if cmdDelta != 0 {
+						samePCforCmds = false
+					}
+				}
+
+				if cmdBytes >= cmdDelta {
+					cmdBegin = true
+				}
+
+			} else {
+				cmdBytes += bytes
+				if cmdBytes >= cmdDelta {
+					cmdBegin = true
+				}
+			}
+		}
+
+		//2. print command instruction
+		p.w.WriteString(fmt.Sprintf("\t(%d)", totalBytes))
 		p.w.WriteString(str)
 		p.w.WriteByte('\n')
 		src = src[bytes:]
+		totalBytes += bytes
 	}
 	return
 }
-
-//ascii85 decode ,and then disassemble code
-// func (p *Parser) parseCode() (err error) {
-// 	return p.parseHex(true)
-// }
 
 func (p *Parser) parseRawStringLine() (str string, err error) {
 	var buf [maxCharsOneLine]byte

@@ -75,7 +75,7 @@ func TestParser(t *testing.T) {
 
 func TestSingleFile(t *testing.T) {
 	//sFile := "D:\\Program Files (x86)\\TclPro1.4\\win32-ix86\\bin\\simple.tbc"
-	sFile := "D:\\Project\\go\\src\\github.com\\corbamico\\tbcload\\test\\test.tcl"
+	sFile := "c:\\Project\\go\\src\\github.com\\corbamico\\tbcload\\test\\interp.tbc"
 	fs, err := os.Open(sFile)
 	if err != nil {
 		t.Error(err)

@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/corbamico/tbcload"
@@ -25,10 +26,11 @@ import (
 // decodeCmd represents the decode command
 var decodeCmd = &cobra.Command{
 	Use:   "decode [string to decode]",
-	Short: "encode a string into ascii85(re-map), which tbc file used",
+	Short: "decode a string into ascii85(re-map), which tbc file used",
 	Long: `tbc file use ascii85 encode and map special ascii code.
 For example:
-,CHr@->proc`,
+	tbcload decode ",CHr@"`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		if len(args) == 1 {
@@ -36,6 +38,7 @@ For example:
 			if ndst := tbcload.Decode(dst, []byte(args[0])); ndst > 0 {
 				fmt.Printf("source:%s\n", args[0])
 				fmt.Printf("decode:%s\n", dst[:ndst])
+				fmt.Printf("dump  :\n%s", hex.Dump(dst[:ndst]))
 			} else {
 				fmt.Printf("source:%s\n", args[0])
 				fmt.Printf("decode error, maybe wrong source string")

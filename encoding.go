@@ -261,11 +261,12 @@ func align5Bytes(src []byte, padding byte) []byte {
 }
 
 func exchangeEvery4(src []byte) {
-	if len(src)%4 != 0 {
-		return
-	}
+	//BUG fixme,there is some len(src)%4!=0
+	// if len(src)%4 != 0 {
+	// 	return
+	// }
 
-	for len(src) > 0 {
+	for len(src) >= 4 {
 		src[0], src[1], src[2], src[3] = src[3], src[2], src[1], src[0]
 		src = src[4:]
 	}

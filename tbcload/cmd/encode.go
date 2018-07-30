@@ -25,13 +25,11 @@ import (
 // encodeCmd represents the encode command
 var encodeCmd = &cobra.Command{
 	Use:   "encode [string to encode]",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "encode a string into ascii85(re-map), which tbc file used",
+	Long: `tbc file use ascii85 encode and map special ascii code.
+For example:
+proc->,CHr@`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 1 {
 			dst := make([]byte, ascii85.MaxEncodedLen(len(args[0])))
