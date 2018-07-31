@@ -84,7 +84,8 @@ func ExampleChainReader2() {
 	// 345
 }
 func ExampleEncode() {
-	src := []byte("testing aliases for non-existent targets")
+	//src := []byte("testing aliases for non-existent targets")
+	src := []byte{0, 0, 0, 0}
 	dst := make([]byte, 280)
 	length := Encode(dst, src)
 	fmt.Printf("%s", dst[:length])
@@ -93,7 +94,8 @@ func ExampleEncode() {
 }
 
 func ExampleDecode() {
-	src := []byte("4;,>!?.EH&ih-(!e2xi6zyiE<!22>:v35>:v22Ppv2j:U!*|yTv0#>6#5cSs!)'!!")
+	src := []byte("4;,>!?.EH&ih-(!e2xi6zyiE<!22>:v35>:v22Ppv2j:U!*|yTv0#>6#5cSs!)'!")
+	//src := []byte("z")
 	dst := make([]byte, 280)
 	length := Decode(dst, src)
 	fmt.Printf("%s", string(dst[:length]))

@@ -37,10 +37,14 @@ func Encode(dst, src []byte) int {
 
 	//step 5 map special char
 	for index := 0; index < encodeLen; index++ {
-		dst[index] = encodeMap[dst[index]-'!']
+		//there is 'z'(122) special for 0x00000000
+		if n := int(dst[index] - '!'); n < len(encodeMap) {
+			dst[index] = encodeMap[n]
+		}
 	}
-
-	return encodeLen - (len(srcCopy) - len(src))
+	//if 0x00 00 00 00->'z', we cannot known how many '!' drop
+	return encodeLen
+	//return encodeLen - (len(srcCopy) - len(src))
 }
 
 /*
@@ -61,10 +65,12 @@ func Decode(dst, src []byte) (ndst int) {
 		srcCopy[index] = decodeMap[src[index]] + '!'
 	}
 
-	//step 1 align to 5 bytes,padding as 0
+	//step 1 align to 5 bytes,padding as 0 (but not for z)
+	//no need do this
+	//BUGBUG, if there is 'z' in middle
 	srcCopy = align5Bytes(srcCopy, '!')
 
-	//step 2 Big-Endian to Little-Endian
+	//step 2 Big-Endian to Little-Endian(but not for 'z')
 	exchangeEvery5(srcCopy)
 
 	//step 3 ascii85 decode
@@ -241,7 +247,11 @@ func align4Bytes(src []byte, padding byte) []byte {
 }
 
 func align5Bytes(src []byte, padding byte) []byte {
-	switch len(src) % 5 {
+	//'z' dont need align to 5 bytes
+	numZ := bytes.Count(src, []byte{'z'})
+	nLen := len(src) - numZ
+
+	switch nLen % 5 {
 	case 1:
 		src = append(src, padding)
 		fallthrough
@@ -272,14 +282,18 @@ func exchangeEvery4(src []byte) {
 	}
 }
 func exchangeEvery5(src []byte) {
-	if len(src)%5 != 0 {
-		return
-	}
-
+	//special 'z' for 0x00000000, dont exchange 'z'
 	for len(src) > 0 {
-		src[0], src[1], src[3], src[4] = src[4], src[3], src[1], src[0]
-		src = src[5:]
+		if src[0] == 'z' {
+			src = src[1:]
+		} else if len(src) >= 5 {
+			src[0], src[1], src[3], src[4] = src[4], src[3], src[1], src[0]
+			src = src[5:]
+		} else {
+			return
+		}
 	}
+	return
 }
 
 var encodeMap = [...]byte{
@@ -497,7 +511,8 @@ var decodeMap = [...]byte{
 	3,              /* w (replaces $) */
 	58,             /* x (replaces [) */
 	59,             /* y (replaces \) */
-	a85Z,           /* z */
+	89,             /* z->z,special for 0x00000000 */
+	//	a85Z,       /* z */
 	a85IllegalChar, /* { */
 	60,             /* | (replaces ]) */
 	a85IllegalChar, /* } */

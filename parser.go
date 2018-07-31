@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -15,12 +16,13 @@ import (
 
 //Parser read tbc file and write 'dissemble' to w
 type Parser struct {
-	r          Decoder
-	w          bufio.Writer
-	Detail     bool //true: disassemble bytecode
-	codeBytes  []byte
-	codeDelta  []byte
-	codeLength []byte
+	r      Decoder
+	w      bufio.Writer
+	Detail bool //true: disassemble bytecode
+
+	codeBytes  bytes.Buffer
+	codeDelta  bytes.Buffer
+	codeLength bytes.Buffer
 }
 
 //NewParser create Parser
@@ -276,38 +278,49 @@ func (p *Parser) parseAuxDataArray() (err error) {
 func (p *Parser) parseCodeDelta() (err error) {
 	var buf [20480]byte
 	var nRead int
-	if _, err = p.parseIntLine(); err != nil {
+	var nRes int64
+	if nRes, err = p.parseIntLine(); err != nil {
 		return
 	}
 	if nRead, err = p.r.Read(buf[:]); err != nil {
 		return
 	}
-	s := hex.EncodeToString(buf[:nRead])
-	_, err = p.w.WriteString(s)
-	err = p.w.WriteByte('\n')
+	p.codeDelta.Reset()
 
-	if nRead > 0 {
-		p.codeDelta = make([]byte, nRead)
-		copy(p.codeDelta, buf[:nRead])
+	if nRes > 0 && nRead > 0 {
+		s := hex.EncodeToString(buf[:nRead])
+		_, err = p.w.WriteString(s)
+		err = p.w.WriteByte('\n')
+
+		if nRead > int(nRes) {
+			nRead = int(nRes)
+		}
+		p.codeDelta.Write(buf[:nRead])
 	}
 	return
 }
 func (p *Parser) parseCodeLength() (err error) {
 	var buf [20480]byte
 	var nRead int
-	if _, err = p.parseIntLine(); err != nil {
+	var nRes int64
+	if nRes, err = p.parseIntLine(); err != nil {
 		return
 	}
 	if nRead, err = p.r.Read(buf[:]); err != nil {
 		return
 	}
-	s := hex.EncodeToString(buf[:nRead])
-	_, err = p.w.WriteString(s)
-	err = p.w.WriteByte('\n')
 
-	if nRead > 0 {
-		p.codeLength = make([]byte, nRead)
-		copy(p.codeLength, buf[:nRead])
+	p.codeLength.Reset()
+
+	if nRes > 0 && nRead > 0 {
+		s := hex.EncodeToString(buf[:nRead])
+		_, err = p.w.WriteString(s)
+		err = p.w.WriteByte('\n')
+
+		if nRead > int(nRes) {
+			nRead = int(nRes)
+		}
+		p.codeLength.Write(buf[:nRead])
 	}
 	return
 }
@@ -315,19 +328,24 @@ func (p *Parser) parseCodeLength() (err error) {
 func (p *Parser) parseCode() (err error) {
 	var buf [20480]byte
 	var nRead int
-	if _, err = p.parseIntLine(); err != nil {
+	var nRes int64
+	if nRes, err = p.parseIntLine(); err != nil {
 		return
 	}
 	if nRead, err = p.r.Read(buf[:]); err != nil {
 		return
 	}
-	s := hex.EncodeToString(buf[:nRead])
-	_, err = p.w.WriteString(s)
-	err = p.w.WriteByte('\n')
+	p.codeBytes.Reset()
 
-	if nRead > 0 {
-		p.codeBytes = make([]byte, nRead)
-		copy(p.codeBytes, buf[:nRead])
+	if nRes > 0 && nRead > 0 {
+		s := hex.EncodeToString(buf[:nRead])
+		_, err = p.w.WriteString(s)
+		err = p.w.WriteByte('\n')
+
+		if nRead > int(nRes) {
+			nRead = int(nRes)
+		}
+		p.codeBytes.Write(buf[:nRead])
 	}
 	return
 }
@@ -424,9 +442,11 @@ func (p *Parser) parseDecompile() (err error) {
 	var str string
 	var bytes int
 	var totalBytes int
-	src := p.codeBytes
+	src := p.codeBytes.Bytes()
+	codeDelta := p.codeDelta.Bytes()
+	codeLength := p.codeLength.Bytes()
 
-	numCmds := len(p.codeDelta)
+	numCmds := len(codeDelta)
 	indexCmds := 0
 	cmdBegin := true
 	var cmdBytes, cmdDelta int
@@ -439,7 +459,8 @@ func (p *Parser) parseDecompile() (err error) {
 			return err
 		}
 		//1. print command title: command %d,pc=xx-xx
-		if numCmds > 0 && indexCmds < (numCmds-1) {
+		if numCmds > 0 && indexCmds < (numCmds) {
+
 			if cmdBegin {
 				cmdBytes = bytes
 				cmdBegin = false
@@ -448,14 +469,23 @@ func (p *Parser) parseDecompile() (err error) {
 
 				for samePCforCmds {
 
-					cmdDelta = int(p.codeDelta[indexCmds+1])
+					//cmdDelta = int(p.codeDelta[indexCmds+1])
+
 					p.w.WriteString(fmt.Sprintf("\tCommand %d", indexCmds))
-					if indexCmds < len(p.codeLength) {
+					if indexCmds < len(codeLength) {
 						//BUG,FIXME, we dont consider codeLength = 0xFF 4bytes case
-						p.w.WriteString(fmt.Sprintf(",pc= %d-%d", totalBytes, totalBytes+int(p.codeLength[indexCmds])-1))
+						p.w.WriteString(fmt.Sprintf(",pc= %d-%d", totalBytes, totalBytes+int(codeLength[indexCmds])-1))
 					}
 					p.w.WriteByte('\n')
+
 					indexCmds++
+					//cmdDelta 是下一条Command 相对于当前Comand的bytes偏移量
+					//如果是最后一条命令，cmdDelta赋值MAX
+					if indexCmds < len(codeDelta) {
+						cmdDelta = int(codeDelta[indexCmds])
+					} else {
+						cmdDelta = math.MaxInt32
+					}
 
 					if cmdDelta != 0 {
 						samePCforCmds = false

@@ -18,13 +18,15 @@ Usage:
 
 Available Commands:
   decode      encode a string into ascii85(re-map), which tbc file used
-  disassemble disassemble a .tbc file, which can be on disk/url
+  decompile   disassemble a .tbc file, which can be on disk/url
   encode      A brief description of your command
 
 Example:
     tbcload encode 123456
-    tbcload disassemble test.tbc  #disassemble a file named test.tbc
-    tbcload disassemble http://127.0.0.1/test.tcl #disassemble from a url
+    tbcload encode  --hex "00010203"
+    tbcload decompile test.tbc  #disassemble a file named test.tbc
+    tbcload decompile --detail test.tbc
+    tbcload decompile http://127.0.0.1/test.tcl #disassemble from a url
 
     example url, can be found as https://github.com/ActiveState/teapot/raw/master/lib/tbcload/tests/tbc10/proc.tbc
 ```

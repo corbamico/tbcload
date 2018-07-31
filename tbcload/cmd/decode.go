@@ -35,7 +35,8 @@ For example:
 		var src []byte
 
 		if len(args) == 1 {
-			dst := make([]byte, len(args[0]))
+			//if there is 'z' ,length will large than src
+			dst := make([]byte, len(args[0])*4)
 
 			src = []byte(args[0])
 			if ndst := tbcload.Decode(dst, src); ndst > 0 {
