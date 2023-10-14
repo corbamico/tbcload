@@ -15,3 +15,5 @@ reference
 .vscode
 debug
 test
+
+go.sum

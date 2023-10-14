@@ -88,11 +88,11 @@ func Decode(dst, src []byte) (ndst int) {
 	return
 }
 
-//Decoder wrap decode for stream reader
+// Decoder wrap decode for stream reader
 type Decoder struct {
 	wrapped io.Reader
-	srcbuf  [20480]byte
-	dstbuf  [20480]byte
+	srcbuf  [2048000]byte
+	dstbuf  [2048000]byte
 	src     []byte
 	dst     []byte
 	//we did not record error, is that ok?
@@ -100,7 +100,7 @@ type Decoder struct {
 
 const maxCharsOneLine = 72
 
-//NewDecoder return Decoder which wrap Decode for stream reader
+// NewDecoder return Decoder which wrap Decode for stream reader
 func NewDecoder(r io.Reader) *Decoder {
 	return &Decoder{wrapped: &eatLastNewLineReader{wrapped: newLineReader(r, maxCharsOneLine)}}
 }
@@ -138,7 +138,7 @@ func (d *Decoder) Read(p []byte) (nRead int, err error) {
 	}
 }
 
-//ReadRaw only read  from wrapped io without Decoding
+// ReadRaw only read  from wrapped io without Decoding
 func (d *Decoder) ReadRaw(p []byte) (nRead int, err error) {
 	nRead, err = d.wrapped.Read(p)
 	return
@@ -159,9 +159,9 @@ func (r *eatLastNewLineReader) Read(p []byte) (nRead int, err error) {
 	return
 }
 
-//numCharsLineReader Read
-//implement continue read if size of line eq numChars, until
-//size of line less than numChars
+// numCharsLineReader Read
+// implement continue read if size of line eq numChars, until
+// size of line less than numChars
 type numCharsLineReader struct {
 	wrapped   bufio.Reader
 	numChars  int //number of each line
