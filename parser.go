@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-//Parser read tbc file and write 'dissemble' to w
+// Parser read tbc file and write 'dissemble' to w
 type Parser struct {
 	r      Decoder
 	w      bufio.Writer
@@ -25,14 +25,14 @@ type Parser struct {
 	codeLength bytes.Buffer
 }
 
-//NewParser create Parser
+// NewParser create Parser
 func NewParser(r io.Reader, w io.Writer) *Parser {
 	return &Parser{r: *NewDecoder(r), w: *bufio.NewWriter(w)}
 }
 
 const tbcFileBeginWith = "TclPro ByteCode "
 
-//Parse from io.Reader
+// Parse from io.Reader
 func (p *Parser) Parse() (err error) {
 	if err = p.skipUntil(tbcFileBeginWith); err != nil {
 		return
@@ -326,7 +326,7 @@ func (p *Parser) parseCodeLength() (err error) {
 }
 
 func (p *Parser) parseCode() (err error) {
-	var buf [20480]byte
+	var buf [2048000]byte
 	var nRead int
 	var nRes int64
 	if nRes, err = p.parseIntLine(); err != nil {
@@ -350,7 +350,7 @@ func (p *Parser) parseCode() (err error) {
 	return
 }
 
-//only conver asci85 to hex printing.
+// only conver asci85 to hex printing.
 func (p *Parser) parseHex() (err error) {
 	var buf [20480]byte
 	var nRead int
