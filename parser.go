@@ -253,24 +253,53 @@ func (p *Parser) parseAuxDataArray() (err error) {
 		return
 	}
 	for index := 0; index < int(num); index++ {
-		//we only support CMP_FOREACH_INFO('F')
-		//and only for numLists=1,numVars=1
-		//F
-		//numLists firstValueTemp loopCtTemp
-		//numVars
-		//*varIndexesPtr
-		if _, err = p.parseRawStringLine(); err != nil {
+		var kind byte
+		if kind, err = p.parseObjectType(); err != nil {
 			return
 		}
-		if _, err = p.parseRawStringLine(); err != nil {
-			return
+
+		switch kind {
+		// CMP_FOREACH_INFO
+		case 'F':
+			// numLists firstValueTemp loopCtTemp
+			var meta []int64
+			if meta, err = p.parseIntList(); err != nil {
+				return
+			}
+			numLists := meta[0]
+			for i := int64(0); i < numLists; i++ {
+				// numVars
+				if _, err = p.parseIntLine(); err != nil {
+					return
+				}
+				// varIndexes
+				if _, err = p.parseRawStringLine(); err != nil {
+					return
+				}
+			}
+		// CMP_JUMPTABLE_INFO
+		case 'J':
+			var numJump int64
+			if numJump, err = p.parseIntLine(); err != nil {
+				return
+			}
+			for i := int64(0); i < numJump; i++ {
+				// hash value
+				if _, err = p.parseIntLine(); err != nil {
+					return
+				}
+				// hash key
+				if _, err = p.parseIntLine(); err != nil {
+					return
+				}
+				if _, err = p.parseASCII85StringLine(); err != nil {
+					return
+				}
+			}
+		default:
+			panic("unsupported parseAuxDataArray")
 		}
-		if _, err = p.parseRawStringLine(); err != nil {
-			return
-		}
-		if _, err = p.parseRawStringLine(); err != nil {
-			return
-		}
+
 	}
 	return err
 }
